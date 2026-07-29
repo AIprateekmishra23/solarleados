@@ -1,0 +1,410 @@
+{
+  "name": "SolarLeadOS - Scenario 3: Hot Lead Accountability Loop",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 */15 9-19 * * *"
+            },
+            {
+              "field": "cronExpression",
+              "expression": "0 0 20 * * *"
+            }
+          ]
+        }
+      },
+      "id": "4ca34e05-4d1e-40e6-9c7d-3f9830134401",
+      "name": "Every 15 min (9-20 IST)",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        -800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Call_Status",
+              "lookupValue": "Pending"
+            }
+          ]
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "FORMATTED_VALUE",
+              "date": "FORMATTED_STRING"
+            }
+          }
+        }
+      },
+      "id": "8f6b2b07-22b1-4408-895c-a62f620f34c0",
+      "name": "Get Pending Calls",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -544,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Reminder_Sent == \"No\" && DateTime.fromFormat(($json.Alert_Sent_At ?? \"\").toString(), \"dd/MM/yyyy HH:mm\", { zone: \"Asia/Kolkata\" }) < $now.minus({ minutes: 25 }) }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true"
+                    },
+                    "rightValue": true
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Reminder25"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.Escalation_Sent == \"No\" && DateTime.fromFormat(($json.Alert_Sent_At ?? \"\").toString(), \"dd/MM/yyyy HH:mm\", { zone: \"Asia/Kolkata\" }) < $now.minus({ minutes: 45 }) }}",
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "true"
+                    },
+                    "rightValue": true
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Escalation45"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "allMatchingOutputs": true
+        }
+      },
+      "id": "d69c59b1-9e52-4b21-a4d1-b565bbace9c2",
+      "name": "Route Overdue Alerts",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -288,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-WAHA-GATEWAY.example.com/api/sendText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ session: \"default\", chatId: \"91XXXXXXXXXX@c.us\", text: \"⚠️ REMINDER: Hot lead not called yet!\\n👤 \" + ($('Get Pending Calls').item.json.Name ?? \"\") + \"\\n📞 +91\" + ($('Get Pending Calls').item.json.Phone ?? \"\") + \"\\n💡 ₹\" + ($('Get Pending Calls').item.json.Monthly_Bill ?? \"\") + \"/mo\\n💯 Score: \" + ($('Get Pending Calls').item.json.Score ?? \"\") + \"/100\\nAlert 25 min pehle gaya tha. Abhi call karo.\\nCall ho gaya? Sheet kholo → Sheet1 tab → Call_Status column → \\\"Called\\\" likh do. Phir reminder band.\" }) }}",
+        "options": {}
+      },
+      "id": "2c217d33-0742-49e7-a739-bb7bffb030bb",
+      "name": "WAHA Owner Reminder 25min",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        64,
+        -144
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "row_number"
+          ],
+          "value": {
+            "row_number": "={{ $('Get Pending Calls').item.json.row_number }}",
+            "Reminder_Sent": "Yes"
+          },
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Reminder_Sent",
+              "displayName": "Reminder_Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "bd922e50-7d28-409d-8621-ac2323644e85",
+      "name": "Mark Reminder Sent",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        384,
+        -144
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-WAHA-GATEWAY.example.com/api/sendText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ session: \"default\", chatId: \"91XXXXXXXXXX@c.us\", text: \"🚨 FINAL ALERT: Hot lead thanda ho raha hai!\\n👤 \" + ($('Get Pending Calls').item.json.Name ?? \"\") + \"\\n📞 +91\" + ($('Get Pending Calls').item.json.Phone ?? \"\") + \"\\n💡 ₹\" + ($('Get Pending Calls').item.json.Monthly_Bill ?? \"\") + \"/mo\\n45 min ho gaye. Koi call record nahi hua.\\nYe lead ABHI kisi aur installer ko call kar raha hoga.\\nCall now ya lead gaya.\" }) }}",
+        "options": {}
+      },
+      "id": "8e660d30-6b66-41e7-b320-b607e4901d2d",
+      "name": "WAHA Owner Escalation 45min",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        64,
+        144
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "row_number"
+          ],
+          "value": {
+            "row_number": "={{ $('Get Pending Calls').item.json.row_number }}",
+            "Escalation_Sent": "Yes"
+          },
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Escalation_Sent",
+              "displayName": "Escalation_Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "d4b8ec91-9369-469b-8ea0-c225b58be0ce",
+      "name": "Mark Escalation Sent",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        384,
+        144
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Scenario 3 - Hot Lead Accountability Loop (WAHA)\n\nEvery 15 min, 09:00-20:00 IST. Reads Sheet1 rows with Call_Status = Pending. If Alert_Sent_At is older than 25 min and Reminder_Sent = No -> owner reminder; older than 45 min and Escalation_Sent = No -> final escalation. Both to XXXXXXXXXX via WAHA. Marks Reminder_Sent / Escalation_Sent = Yes.",
+        "height": 200,
+        "width": 560,
+        "color": 4
+      },
+      "id": "3611477b-8235-48bf-bc68-07021b64d617",
+      "name": "Sticky Note 7cf916f7",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -848,
+        -48
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Every 15 min (9-20 IST)": {
+      "main": [
+        [
+          {
+            "node": "Get Pending Calls",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Pending Calls": {
+      "main": [
+        [
+          {
+            "node": "Route Overdue Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Overdue Alerts": {
+      "main": [
+        [
+          {
+            "node": "WAHA Owner Reminder 25min",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WAHA Owner Escalation 45min",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAHA Owner Reminder 25min": {
+      "main": [
+        [
+          {
+            "node": "Mark Reminder Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAHA Owner Escalation 45min": {
+      "main": [
+        [
+          {
+            "node": "Mark Escalation Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true,
+    "timezone": "Asia/Kolkata"
+  },
+  "versionId": "b7f3dd17-9215-4f6b-ac9e-6a883ea71d42",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "nodeGroups": [],
+  "id": "liC9Z3J62ladCR12",
+  "tags": []
+}

@@ -1,0 +1,698 @@
+{
+  "name": "SolarLeadOS - Scenario 4: Reply Detection & Intent Routing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "waha-reply",
+        "options": {}
+      },
+      "id": "cf5d2e33-567e-4ac7-9f11-2e6218f67189",
+      "name": "WAHA Reply Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1104,
+        0
+      ],
+      "webhookId": "4ab45784-e142-41f9-b0a9-70f468c17cc2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ (($json.body?.event ?? \"\") == \"message\" || ($json.body?.event_type ?? \"\") == \"message_received\") && String($json.body?.payload?.fromMe ?? $json.body?.data?.fromMe ?? \"\") == \"false\" && ($json.body?.payload?.from ?? $json.body?.data?.from ?? \"\").toString().includes(\"@c.us\") && !($json.body?.payload?.from ?? $json.body?.data?.from ?? \"\").toString().includes(\"91XXXXXXXXXX\") && !($json.body?.payload?.from ?? $json.body?.data?.from ?? \"\").toString().includes(\"91XXXXXXXXXX\") }}",
+              "operator": {
+                "type": "boolean",
+                "operation": "true"
+              },
+              "rightValue": true
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "5e00a6f2-7326-4934-a2b8-b3c2e922ce3a",
+      "name": "Valid Incoming Reply",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        -864,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "r-0",
+              "name": "CleanPhone",
+              "type": "string",
+              "value": "={{ ($json.body?.payload?.from ?? $json.body?.data?.from ?? \"\").toString().replace(\"@c.us\", \"\").replace(/[^0-9]/g, \"\").slice(-10) }}"
+            },
+            {
+              "id": "r-1",
+              "name": "MessageBody",
+              "type": "string",
+              "value": "={{ ($json.body?.payload?.body ?? $json.body?.data?.body ?? \"\").toString().length > 0 ? ($json.body?.payload?.body ?? $json.body?.data?.body ?? \"\").toString() : \"[Customer sent a photo/file on WhatsApp — likely their electricity bill. Open WhatsApp to view it.]\" }}"
+            },
+            {
+              "id": "r-2",
+              "name": "MsgType",
+              "type": "string",
+              "value": "={{ ($json.body?.payload?.type ?? $json.body?.data?.type ?? \"\").toString() }}"
+            },
+            {
+              "id": "r-3",
+              "name": "SenderName",
+              "type": "string",
+              "value": "={{ ($json.body?.payload?._data?.notifyName ?? $json.body?.data?.pushname ?? \"\").toString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "da4914b0-3eba-460e-85fc-def6f1c92e0d",
+      "name": "Normalize Reply",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -624,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Phone",
+              "lookupValue": "={{ $json.CleanPhone }}"
+            }
+          ]
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "FORMATTED_VALUE",
+              "date": "FORMATTED_STRING"
+            }
+          }
+        }
+      },
+      "id": "4a024de1-f4f6-4fe2-81a9-f76aa81dc7c4",
+      "name": "Find Lead by Phone",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -384,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "models/gemini-2.5-flash-lite",
+          "cachedResultName": "Gemini 2.5 Flash-Lite"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are classifying a WhatsApp reply from a solar lead in India. The lead earlier received solar follow-up messages. Read their reply and classify the intent.\nReply text: \"{{ $('Normalize Reply').first().json.MessageBody }}\"\nReturn ONLY valid JSON. No markdown, no backticks, no extra text:\n{\"intent\": \"INTERESTED\", \"summary\": \"max 12 words, what the lead wants, in simple English\", \"suggested_reply\": \"max 20 words the installer can send back, in Hinglish\"}\nintent must be exactly one of: INTERESTED, QUESTION, LATER, STOP\nRules:\n- INTERESTED = wants to proceed, book a site visit, get a quote, ready to move forward, or sent a bill photo. Examples: \"haan interested\", \"VISIT\", \"call me\", \"kab aa sakte ho\", \"yes\".\n- QUESTION = asking for information, not yet committed. Price, subsidy, panel type, process, EMI, warranty. Examples: \"kitna cost hoga\", \"subsidy kitni milegi\", \"kaunse panel\".\n- LATER = wants to postpone. Examples: \"abhi nahi\", \"baad me\", \"3 mahine baad\", \"busy hu\".\n- STOP = not interested, already installed, annoyed, opt-out. Examples: \"nahi chahiye\", \"stop\", \"band karo\", \"already lagwa liya\", \"mat bhejo\".\n- If the text says the customer sent a photo/file, classify as INTERESTED (a bill photo is a strong buying signal).\n- If unclear, choose QUESTION.\n- The reply may be Hindi, English, or Hinglish. Understand all three."
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {
+          "maxOutputTokens": 2048,
+          "temperature": 0.2
+        }
+      },
+      "id": "2d6121bc-aba8-43a5-abaa-44bdec401b4b",
+      "name": "Classify Intent (Gemini)",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -144,
+        0
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REDACTED",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const j = $input.first().json;\nlet raw = j.content?.parts?.[0]?.text ?? j.candidates?.[0]?.content?.parts?.[0]?.text ?? j.text ?? j.output ?? \"\";\nlet parsed = null;\nif (raw && typeof raw === \"object\") { parsed = raw; } else if (raw) {\n  try { parsed = JSON.parse(String(raw).replace(/```json|```/g, \"\").trim()); } catch (e) { parsed = null; }\n}\nif (!parsed || typeof parsed !== \"object\" || !parsed.intent) {\n  parsed = { intent: \"QUESTION\", summary: \"auto-read failed, please check WhatsApp\", suggested_reply: \"Namaste! Aap batayein, main kaise help kar sakta hun?\" };\n}\nif (![\"INTERESTED\",\"QUESTION\",\"LATER\",\"STOP\"].includes(parsed.intent)) { parsed.intent = \"QUESTION\"; }\nreturn [{ json: parsed }];"
+      },
+      "id": "471222a1-09dd-4d5f-b294-a51610b07dbb",
+      "name": "Parse Intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        112,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "row_number"
+          ],
+          "value": {
+            "row_number": "={{ $('Find Lead by Phone').first().json.row_number }}",
+            "Stage": "={{ $json.intent == \"STOP\" ? \"Lost\" : ($('Find Lead by Phone').first().json.Stage ?? \"\") }}",
+            "Status": "={{ $json.intent == \"INTERESTED\" ? \"Replied_Interested\" : ($json.intent == \"QUESTION\" ? \"Replied_Question\" : ($json.intent == \"LATER\" ? \"Replied_Later\" : ($json.intent == \"STOP\" ? \"Unsubscribed\" : \"Replied_Question\"))) }}",
+            "Last_Reply_Date": "={{ $now.setZone(\"Asia/Kolkata\").toFormat(\"dd/MM/yyyy HH:mm\") }}",
+            "Reply_Intent": "={{ $json.intent }}",
+            "Last_Reply_Text": "={{ $('Normalize Reply').first().json.MessageBody }}",
+            "Lost_Reason": "={{ $json.intent == \"STOP\" ? \"WhatsApp opt-out / not interested\" : ($('Find Lead by Phone').first().json.Lost_Reason ?? \"\") }}"
+          },
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Stage",
+              "displayName": "Stage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Last_Reply_Date",
+              "displayName": "Last_Reply_Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Reply_Intent",
+              "displayName": "Reply_Intent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Last_Reply_Text",
+              "displayName": "Last_Reply_Text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Lost_Reason",
+              "displayName": "Lost_Reason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "9cc8289b-be5f-4692-b4d3-e828875e5a4c",
+      "name": "Update Lead Reply",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        352,
+        0
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Intent').first().json.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "INTERESTED"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Interested"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Intent').first().json.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "QUESTION"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Question"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Intent').first().json.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "LATER"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Later"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Intent').first().json.intent }}",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "rightValue": "STOP"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Stop"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "aaf9e2c9-38b0-4796-abb2-2742e9ab5309",
+      "name": "Route by Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        592,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-WAHA-GATEWAY.example.com/api/sendText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ session: \"default\", chatId: \"91\" + ($('Find Lead by Phone').first().json.Phone ?? \"\").toString() + \"@c.us\", text: \"Bahut badhiya \" + ($('Find Lead by Phone').first().json.Name ?? \"\") + \"! 🙏 Aapki ruchi ke liye dhanyavaad.\\nHamara solar expert aapko turant call karega aur aapke ₹\" + ($('Find Lead by Phone').first().json.Monthly_Bill ?? \"\") + \"/mo bill par exact savings + Govt subsidy detail dega.\\nThoda intezaar kijiye. 🌞\" }) }}",
+        "options": {}
+      },
+      "id": "c76e5564-89fd-410b-9f78-f12dbca6b9c7",
+      "name": "WAHA Ack Interested",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        864,
+        -320
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-WAHA-GATEWAY.example.com/api/sendText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ session: \"default\", chatId: \"91XXXXXXXXXX@c.us\", text: \"🔥🔥 LEAD REPLIED — WANTS TO PROCEED\\n👤 \" + ($('Find Lead by Phone').first().json.Name ?? \"\") + \"\\n📞 +91\" + ($('Find Lead by Phone').first().json.Phone ?? \"\") + \"\\n📍 \" + ($('Find Lead by Phone').first().json.City ?? \"\") + \"\\n💯 Score: \" + ($('Find Lead by Phone').first().json.Score ?? \"\") + \"\\n💬 Unhone bheja: \\\"\" + ($('Normalize Reply').first().json.MessageBody ?? \"\") + \"\\\"\\n🤖 \" + ($('Parse Intent').first().json.summary ?? \"\") + \"\\n👉 Suggested reply: \" + ($('Parse Intent').first().json.suggested_reply ?? \"\") + \"\\nABHI call karo — garam lead hai.\" }) }}",
+        "options": {}
+      },
+      "id": "2e66c70b-3f87-4688-9b3e-31a902f22813",
+      "name": "WAHA Owner Alert Interested",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1120,
+        -320
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-WAHA-GATEWAY.example.com/api/sendText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ session: \"default\", chatId: \"91XXXXXXXXXX@c.us\", text: \"❓ LEAD ASKED A QUESTION\\n👤 \" + ($('Find Lead by Phone').first().json.Name ?? \"\") + \" | 📞 +91\" + ($('Find Lead by Phone').first().json.Phone ?? \"\") + \"\\n📍 \" + ($('Find Lead by Phone').first().json.City ?? \"\") + \" | 💯 \" + ($('Find Lead by Phone').first().json.Score ?? \"\") + \"\\n💬 \\\"\" + ($('Normalize Reply').first().json.MessageBody ?? \"\") + \"\\\"\\n🤖 \" + ($('Parse Intent').first().json.summary ?? \"\") + \"\\n👉 Suggested reply: \" + ($('Parse Intent').first().json.suggested_reply ?? \"\") + \"\\nWhatsApp par jaldi jawab do.\" }) }}",
+        "options": {}
+      },
+      "id": "297dc086-8529-47fa-bb78-aad10d335603",
+      "name": "WAHA Owner Alert Question",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        864,
+        -96
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-WAHA-GATEWAY.example.com/api/sendText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ session: \"default\", chatId: \"91XXXXXXXXXX@c.us\", text: \"⏰ LEAD SAID NOT NOW\\n👤 \" + ($('Find Lead by Phone').first().json.Name ?? \"\") + \" | 📞 +91\" + ($('Find Lead by Phone').first().json.Phone ?? \"\") + \"\\n💬 \\\"\" + ($('Normalize Reply').first().json.MessageBody ?? \"\") + \"\\\"\\n🤖 \" + ($('Parse Intent').first().json.summary ?? \"\") + \"\\nFollow-up drip ruk gaya (Status: Replied_Later). Baad me reconnect karenge.\" }) }}",
+        "options": {}
+      },
+      "id": "bb6229a7-3ded-4225-a162-2523414df66c",
+      "name": "WAHA Owner Alert Later",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        864,
+        128
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-WAHA-GATEWAY.example.com/api/sendText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ session: \"default\", chatId: \"91\" + ($('Find Lead by Phone').first().json.Phone ?? \"\").toString() + \"@c.us\", text: \"Theek hai \" + ($('Find Lead by Phone').first().json.Name ?? \"\") + \", hum aur messages nahi bhejenge. 🙏\\nAgar future me solar ya bijli bill kam karne ka mann kare, kabhi bhi yahan message kar dena. Dhanyavaad!\" }) }}",
+        "options": {}
+      },
+      "id": "bdcc7de2-d7ab-4468-9401-18fdf4611bb0",
+      "name": "WAHA Ack Stop",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        864,
+        352
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-WAHA-GATEWAY.example.com/api/sendText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ session: \"default\", chatId: \"91XXXXXXXXXX@c.us\", text: \"🔕 OPT-OUT\\n\" + ($('Find Lead by Phone').first().json.Name ?? \"\") + \" (+91\" + ($('Find Lead by Phone').first().json.Phone ?? \"\") + \") ne messages band karne ko kaha.\\nStatus = Unsubscribed, Stage = Lost.\\nAb is lead ko koi automatic message nahi jayega.\" }) }}",
+        "options": {}
+      },
+      "id": "3d9fe3c3-2386-468c-81a5-03ecc1844234",
+      "name": "WAHA Owner Alert Stop",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1120,
+        352
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "## Scenario 4 - Reply Detection & Intent Routing (WAHA)\n\nPoint the WAHA webhook (session events: message) at this workflow production URL. Filters valid lead replies, classifies intent with Gemini flash-lite (INTERESTED/QUESTION/LATER/STOP), updates Sheet1 (Status, Stage, Reply columns), then acks the lead and alerts the owner (XXXXXXXXXX).",
+        "height": 200,
+        "width": 540,
+        "color": 4
+      },
+      "id": "1b361f8b-4dec-45e6-910f-ea5e5b165a9d",
+      "name": "Sticky Note bea63268",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -1168,
+        272
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "WAHA Reply Webhook": {
+      "main": [
+        [
+          {
+            "node": "Valid Incoming Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid Incoming Reply": {
+      "main": [
+        [
+          {
+            "node": "Normalize Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Reply": {
+      "main": [
+        [
+          {
+            "node": "Find Lead by Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Lead by Phone": {
+      "main": [
+        [
+          {
+            "node": "Classify Intent (Gemini)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Intent (Gemini)": {
+      "main": [
+        [
+          {
+            "node": "Parse Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Intent": {
+      "main": [
+        [
+          {
+            "node": "Update Lead Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Lead Reply": {
+      "main": [
+        [
+          {
+            "node": "Route by Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Intent": {
+      "main": [
+        [
+          {
+            "node": "WAHA Ack Interested",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WAHA Owner Alert Question",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WAHA Owner Alert Later",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "WAHA Ack Stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAHA Ack Interested": {
+      "main": [
+        [
+          {
+            "node": "WAHA Owner Alert Interested",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WAHA Ack Stop": {
+      "main": [
+        [
+          {
+            "node": "WAHA Owner Alert Stop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "265396cb-3ddb-46d6-a2c7-c0fc186b3f74",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "nodeGroups": [],
+  "id": "hkyPgzOgJYTnda2N",
+  "tags": []
+}

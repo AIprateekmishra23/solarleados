@@ -1,0 +1,948 @@
+{
+  "name": "Scenario 1 - WAHA Lead Intake & AI Scoring",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f-name",
+              "name": "Name",
+              "type": "string",
+              "value": "={{ ($json.body?.name ?? $json.name ?? \"\").toString().trim() }}"
+            },
+            {
+              "id": "f-phone",
+              "name": "Phone",
+              "type": "string",
+              "value": "={{ ($json.body?.phone ?? $json.phone ?? \"\").toString().replace(/[^0-9]/g, \"\").slice(-10) }}"
+            },
+            {
+              "id": "f-city",
+              "name": "City",
+              "type": "string",
+              "value": "={{ ($json.body?.city ?? $json.city ?? \"\").toString().trim() }}"
+            },
+            {
+              "id": "f-bill",
+              "name": "Monthly_Bill",
+              "type": "string",
+              "value": "={{ $json.body?.monthly_bill ?? $json.monthly_bill ?? \"\" }}"
+            },
+            {
+              "id": "f-own",
+              "name": "Ownership",
+              "type": "string",
+              "value": "={{ $json.body?.ownership ?? $json.ownership ?? \"\" }}"
+            },
+            {
+              "id": "f-prop",
+              "name": "Property_Type",
+              "type": "string",
+              "value": "={{ $json.body?.property_type ?? $json.property_type ?? \"\" }}"
+            },
+            {
+              "id": "f-time",
+              "name": "Timeline",
+              "type": "string",
+              "value": "={{ $json.body?.timeline ?? $json.timeline ?? \"\" }}"
+            },
+            {
+              "id": "f-src",
+              "name": "Source",
+              "type": "string",
+              "value": "={{ ($json.body?.source ?? $json.source) || \"Direct\" }}"
+            },
+            {
+              "id": "f-ts",
+              "name": "Timestamp",
+              "type": "string",
+              "value": "={{ $now.setZone(\"Asia/Kolkata\").toFormat(\"dd/MM/yyyy HH:mm\") }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b3cbf307-42b8-4033-811f-1f9871105a39",
+      "name": "Normalize Lead",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -480,
+        16
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Phone",
+              "lookupValue": "={{ $json.Phone }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "acb3a9d3-b813-45bc-adf3-80d2cdf23baa",
+      "name": "Find Existing Lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -208,
+        16
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.row_number ?? 0 }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              },
+              "rightValue": 0
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "5a080525-f270-4772-8947-39c5c0e5c472",
+      "name": "Is Duplicate Lead?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        48,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "row_number"
+          ],
+          "value": {
+            "row_number": "={{ $json.row_number }}",
+            "Notes": "={{ 'Re-submitted via ' + $('Normalize Lead').first().json.Source + ' on ' + $('Normalize Lead').first().json.Timestamp + ' | Timeline: ' + $('Normalize Lead').first().json.Timeline }}"
+          },
+          "schema": [
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "28a4ae83-9c66-43e3-8962-941b4ab2f3b5",
+      "name": "Update Duplicate Lead",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        304,
+        -208
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-flash",
+          "mode": "id"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=You are a solar lead qualification assistant for India. Analyze the lead data and return ONLY a valid JSON object - no markdown, no code fences, just raw JSON:\n{\"city_verified\": \"corrected city name\", \"state\": \"state name\", \"grid_zone\": \"Urban or Semi-Urban or Rural\", \"system_size_kw\": number, \"solar_potential\": \"High or Medium or Low\", \"subsidy_eligible\": true or false, \"score\": number 0-100, \"category\": \"Hot or Warm or Cold\", \"reason\": \"one concise sentence\", \"followup_priority\": \"Immediate or 24h or Weekly\"}\n\nScoring rules (start at 50, add/subtract):\n- Monthly bill above 10000: +25 | 6000-10000: +18 | 3000-6000: +10 | 1000-3000: +3 | below 1000: +0\n- Timeline ASAP: +15 | within 1-3 months: +8 | within 3-6: +3 | Just exploring: -5\n- Ownership own: +8 | rent: +0\n- Property type Commercial or Industrial: +10 | Residential: +0\n- Source Friends/Neighbour or Whatsapp: +10 | Google: +5 | Facebook/Instagram: +3\n- Urban city location: +5\n\nCategory thresholds: score >= 75 = Hot, 50-74 = Warm, below 50 = Cold\nSystem size: Residential + bill <3000 = 1-2kW, bill 3000-6000 = 2-3kW, bill >6000 = 5-10kW, Commercial = 10-50kW, Industrial = 50-200kW\n\nQualify this solar lead:\nName: {{ $('Normalize Lead').first().json.Name }}\nCity/Area: {{ $('Normalize Lead').first().json.City }}\nMonthly Electricity Bill: {{ $('Normalize Lead').first().json.Monthly_Bill }}\nOwnership: {{ $('Normalize Lead').first().json.Ownership }}\nProperty Type: {{ $('Normalize Lead').first().json.Property_Type }}\nInstallation Timeline: {{ $('Normalize Lead').first().json.Timeline }}\nSource: {{ $('Normalize Lead').first().json.Source }}"
+            }
+          ]
+        },
+        "jsonOutput": true,
+        "builtInTools": {},
+        "options": {
+          "maxOutputTokens": 1024,
+          "temperature": 0.2,
+          "thinkingBudget": 0
+        }
+      },
+      "id": "8df0f859-3524-4ab6-a103-8e5883f24401",
+      "name": "Score Lead with Gemini",
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        256,
+        160
+      ],
+      "credentials": {
+        "googlePalmApi": {
+          "id": "REDACTED",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const src = $('Normalize Lead').first().json;\nconst j = $input.first().json;\nlet raw = j.content?.parts?.[0]?.text ?? j.candidates?.[0]?.content?.parts?.[0]?.text ?? j.text ?? j.output ?? \"\";\nlet parsed = null;\nif (raw && typeof raw === \"object\") {\n  parsed = raw;\n} else if (raw) {\n  try {\n    parsed = JSON.parse(String(raw).replace(/```json|```/g, \"\").trim());\n  } catch (e) {\n    parsed = null;\n  }\n}\nif (!parsed || typeof parsed !== \"object\" || parsed.score === undefined) {\n  parsed = { city_verified: src.City, state: \"\", grid_zone: \"Semi-Urban\", system_size_kw: 3, solar_potential: \"Medium\", subsidy_eligible: false, score: 50, category: \"Warm\", reason: \"AI scoring unavailable - default Warm score, review manually\", followup_priority: \"24h\" };\n}\nparsed.score = Math.min(100, Math.max(0, Number(parsed.score) || 0));\nparsed.category = parsed.score >= 75 ? \"Hot\" : parsed.score >= 50 ? \"Warm\" : \"Cold\";\nreturn [{ json: parsed }];"
+      },
+      "id": "6183b25a-38bf-496a-ab8f-c86caead0a93",
+      "name": "Parse AI Score",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        544,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Timestamp": "={{ $('Normalize Lead').first().json.Timestamp }}",
+            "Name": "={{ $('Normalize Lead').first().json.Name }}",
+            "Phone": "={{ $('Normalize Lead').first().json.Phone }}",
+            "City": "={{ $json.city_verified }}",
+            "Monthly_Bill": "={{ $('Normalize Lead').first().json.Monthly_Bill }}",
+            "Ownership": "={{ $('Normalize Lead').first().json.Ownership }}",
+            "Property_Type": "={{ $('Normalize Lead').first().json.Property_Type }}",
+            "Timeline": "={{ $('Normalize Lead').first().json.Timeline }}",
+            "Source": "={{ $('Normalize Lead').first().json.Source }}",
+            "Score": "={{ $json.score }}",
+            "Segment": "={{ $json.category }}",
+            "AI_Insight": "={{ $json.reason }}",
+            "Status": "Qualified",
+            "Day1_Due": "={{ $now.setZone(\"Asia/Kolkata\").plus({ days: 1 }).toFormat(\"dd/MM/yyyy\") }}",
+            "Day2_Due": "={{ $now.setZone(\"Asia/Kolkata\").plus({ days: 2 }).toFormat(\"dd/MM/yyyy\") }}",
+            "Day3_Due": "={{ $now.setZone(\"Asia/Kolkata\").plus({ days: 3 }).toFormat(\"dd/MM/yyyy\") }}",
+            "Day5_Due": "={{ $now.setZone(\"Asia/Kolkata\").plus({ days: 5 }).toFormat(\"dd/MM/yyyy\") }}",
+            "Day7_Due": "={{ $now.setZone(\"Asia/Kolkata\").plus({ days: 7 }).toFormat(\"dd/MM/yyyy\") }}",
+            "Day10_Due": "={{ $now.setZone(\"Asia/Kolkata\").plus({ days: 10 }).toFormat(\"dd/MM/yyyy\") }}",
+            "Day14_Due": "={{ $now.setZone(\"Asia/Kolkata\").plus({ days: 14 }).toFormat(\"dd/MM/yyyy\") }}",
+            "ColdDay14_Due": "={{ $now.setZone(\"Asia/Kolkata\").plus({ days: 14 }).toFormat(\"dd/MM/yyyy\") }}",
+            "Day21_Due": "={{ $now.setZone(\"Asia/Kolkata\").plus({ days: 21 }).toFormat(\"dd/MM/yyyy\") }}",
+            "Day22_Due": "={{ $now.setZone(\"Asia/Kolkata\").plus({ days: 22 }).toFormat(\"dd/MM/yyyy\") }}",
+            "Day30_Due": "={{ $now.setZone(\"Asia/Kolkata\").plus({ days: 30 }).toFormat(\"dd/MM/yyyy\") }}"
+          },
+          "schema": [
+            {
+              "id": "Timestamp",
+              "displayName": "Timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Name",
+              "displayName": "Name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "City",
+              "displayName": "City",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Monthly_Bill",
+              "displayName": "Monthly_Bill",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Ownership",
+              "displayName": "Ownership",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Property_Type",
+              "displayName": "Property_Type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Timeline",
+              "displayName": "Timeline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Source",
+              "displayName": "Source",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Score",
+              "displayName": "Score",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Segment",
+              "displayName": "Segment",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "AI_Insight",
+              "displayName": "AI_Insight",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Status",
+              "displayName": "Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Day1_Due",
+              "displayName": "Day1_Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Day2_Due",
+              "displayName": "Day2_Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Day3_Due",
+              "displayName": "Day3_Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Day5_Due",
+              "displayName": "Day5_Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Day7_Due",
+              "displayName": "Day7_Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Day10_Due",
+              "displayName": "Day10_Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Day14_Due",
+              "displayName": "Day14_Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "ColdDay14_Due",
+              "displayName": "ColdDay14_Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Day21_Due",
+              "displayName": "Day21_Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Day22_Due",
+              "displayName": "Day22_Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Day30_Due",
+              "displayName": "Day30_Due",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "7712119f-2e51-43d2-af22-e05979ac2f08",
+      "name": "Append Lead Row",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        784,
+        160
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-WAHA-GATEWAY.example.com/api/sendText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ session: 'default', chatId: '91' + $('Normalize Lead').first().json.Phone + '@c.us', text: 'Namaste ' + $('Normalize Lead').first().json.Name + ' ji! 🙏\\n\\nSolar ke liye interest dikhane ke liye dhanyavaad. Humein aapki request mil gayi hai. ✅\\n\\nHamari team aapki details check kar rahi hai aur jald hi aapko call karegi - aaj hi, kuch hi ghanton mein.\\n\\nTab tak koi sawaal ho toh yahin reply kar dijiye.\\n\\n- The Orion Solar' }) }}",
+        "options": {}
+      },
+      "id": "c8c23daf-2beb-4a32-a571-a03fd8b59c1b",
+      "name": "WhatsApp Lead Confirmation (WAHA)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1024,
+        160
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse AI Score').first().json.score }}",
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    },
+                    "rightValue": 75,
+                    "id": "e9d7829b-0d38-4126-b3b5-d09d0b39b238"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Hot"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse AI Score').first().json.score }}",
+                    "operator": {
+                      "type": "number",
+                      "operation": "gte"
+                    },
+                    "rightValue": 50,
+                    "id": "a2c52e4c-5690-4c9e-a5cd-7eef3019c5ad"
+                  },
+                  {
+                    "leftValue": "={{ $('Parse AI Score').first().json.score }}",
+                    "operator": {
+                      "type": "number",
+                      "operation": "lt"
+                    },
+                    "rightValue": 75,
+                    "id": "29f26aea-37d7-4058-863c-7dccae380ca4"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Warm"
+            }
+          ]
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "2b01750a-fd02-45c4-909b-712c8cf8a36d",
+      "name": "Route by Score",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        1264,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-WAHA-GATEWAY.example.com/api/sendText",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "session",
+              "value": "default"
+            },
+            {
+              "name": "chatId",
+              "value": "91XXXXXXXXXX@c.us"
+            },
+            {
+              "name": "text",
+              "value": "=HOT LEAD: {{ $('Normalize Lead').first().json.Name }} | {{ $('Normalize Lead').first().json.Phone }} | {{ $('Parse AI Score').first().json.city_verified }} | Score:{{ $('Parse AI Score').first().json.score }}/100 | {{ $('Normalize Lead').first().json.Monthly_Bill }}/mo | {{ $('Normalize Lead').first().json.Property_Type }} | {{ $('Normalize Lead').first().json.Timeline }} | {{ $('Parse AI Score').first().json.reason }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f50b82c0-29d7-4e62-9a25-e6fbdf30e714",
+      "name": "Hot Lead Alert to Owner (WAHA)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1504,
+        48
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://YOUR-WAHA-GATEWAY.example.com/api/sendText",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ session: 'default', chatId: '91XXXXXXXXXX@c.us', text: '\\uD83D\\uDFE1 WARM LEAD - Call today\\n\\n\\uD83D\\uDC64 ' + $('Normalize Lead').first().json.Name + '\\n\\uD83D\\uDCDE +91' + $('Normalize Lead').first().json.Phone + '\\n\\uD83D\\uDCCD ' + $('Parse AI Score').first().json.city_verified + '\\n\\uD83D\\uDCAF Score: ' + $('Parse AI Score').first().json.score + '/100\\n\\uD83D\\uDCA1 \\u20B9' + $('Normalize Lead').first().json.Monthly_Bill + '/mo | ' + $('Normalize Lead').first().json.Property_Type + '\\n\\u23F0 ' + $('Normalize Lead').first().json.Timeline + '\\n\\n\\uD83D\\uDCAC ' + $('Parse AI Score').first().json.reason + '\\n\\nGood potential - aaj ya kal call kar lena.' }) }}",
+        "options": {}
+      },
+      "id": "d1e93287-ea14-43cd-b24b-cc368a6ac5d4",
+      "name": "Warm Lead Alert to Owner (WAHA)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1504,
+        272
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "solar-lead-intake",
+        "options": {}
+      },
+      "id": "ef0127f0-c392-4b05-b410-ca3c818cce85",
+      "name": "Lead Intake Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -736,
+        0
+      ],
+      "webhookId": "cd7dc0e9-b2c7-4a0b-9a36-dc96dfe0a100"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "YOUR_GOOGLE_SHEET_ID"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "Sheet1"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "matchingColumns": [
+            "Phone"
+          ],
+          "value": {
+            "Phone": "={{ $('Normalize Lead').first().json.Phone }}",
+            "Call_Status": "Pending",
+            "Alert_Sent_At": "={{ $now.setZone(\"Asia/Kolkata\").toFormat(\"dd/MM/yyyy HH:mm\") }}",
+            "Reminder_Sent": "No",
+            "Escalation_Sent": "No"
+          },
+          "schema": [
+            {
+              "id": "Phone",
+              "displayName": "Phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Call_Status",
+              "displayName": "Call_Status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Alert_Sent_At",
+              "displayName": "Alert_Sent_At",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Reminder_Sent",
+              "displayName": "Reminder_Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "Escalation_Sent",
+              "displayName": "Escalation_Sent",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ]
+        },
+        "options": {
+          "cellFormat": "USER_ENTERED"
+        }
+      },
+      "id": "74e527ba-f40b-4f6a-b7e7-c2287b461cc7",
+      "name": "Set Call Accountability",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        1760,
+        48
+      ],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "REDACTED",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Normalize Lead": {
+      "main": [
+        [
+          {
+            "node": "Find Existing Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Existing Lead": {
+      "main": [
+        [
+          {
+            "node": "Is Duplicate Lead?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Duplicate Lead?": {
+      "main": [
+        [
+          {
+            "node": "Update Duplicate Lead",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Score Lead with Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Score Lead with Gemini": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Score": {
+      "main": [
+        [
+          {
+            "node": "Append Lead Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Lead Row": {
+      "main": [
+        [
+          {
+            "node": "WhatsApp Lead Confirmation (WAHA)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WhatsApp Lead Confirmation (WAHA)": {
+      "main": [
+        [
+          {
+            "node": "Route by Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Score": {
+      "main": [
+        [
+          {
+            "node": "Hot Lead Alert to Owner (WAHA)",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Warm Lead Alert to Owner (WAHA)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lead Intake Webhook": {
+      "main": [
+        [
+          {
+            "node": "Normalize Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hot Lead Alert to Owner (WAHA)": {
+      "main": [
+        [
+          {
+            "node": "Set Call Accountability",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": true
+  },
+  "versionId": "941f93ec-75a7-4204-ac51-51e675fd3e92",
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp",
+    "templateCredsSetupCompleted": true
+  },
+  "nodeGroups": [],
+  "id": "MJVTMsbjmR7QBxQH",
+  "tags": []
+}
