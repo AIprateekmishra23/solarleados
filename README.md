@@ -2,7 +2,7 @@
 
 An AI lead-management system for rooftop-solar installers in North India.
 Eight connected n8n workflows, one Google Sheets CRM, WhatsApp as the only
-customer channel. Built, deployed, and sold to real installers.
+customer channel. Built solo, running live end to end.
 
 **▶ [5-minute demo — the system running live](https://www.loom.com/share/ab6c6cec7921441d80eaf72ec10bfdb9)**
 
@@ -53,7 +53,7 @@ Every stage writes its state back to the same sheet. Nothing runs twice.
 
 ## What's in this repo
 
-SolarLeadOS runs as **8 workflows in production. Three are published here.**
+SolarLeadOS is **8 workflows. Three are published here.**
 
 Together these three cover every technique used across the whole system —
 both trigger types, both LLM use-cases, all routing patterns, and the error and
@@ -67,7 +67,7 @@ state handling that repeats everywhere else.
 
 **Not published:** the drip sequencer and the four lifecycle workflows
 (post-proposal, site visits, dormant reactivation, referrals). Those hold the
-sequencing logic and message copy the product is sold on. All eight are shown
+sequencing logic and message copy the product is built around. All eight are shown
 running in the demo video and I'm happy to walk through any of them on a call.
 
 This is a portfolio, not a handover.
@@ -88,9 +88,9 @@ So every LLM call is followed by a plain-JavaScript Code node that:
 - clamps the score to 0–100
 - **falls back to a safe Warm default** rather than throwing
 
-A model failure degrades the lead to Warm. It never loses the lead. In a year of
-running this, that fallback has fired a handful of times and no one noticed —
-which is the point.
+A model failure degrades the lead to Warm. It never loses the lead. The fallback
+has fired a handful of times in testing and nothing downstream noticed — which is
+the point.
 
 ### 2. Every send is followed by a state write
 
@@ -131,13 +131,14 @@ Every node that touches an external service is configured for failure:
 
 **n8n** (self-hosted) · **Google Gemini** `gemini-2.5-flash` for scoring and
 intent classification · **WhatsApp** via self-hosted WAHA in Docker (demo) and
-UltraMsg (production) · **Google Sheets** as CRM with Apps Script ·
+UltraMsg (the cloud option for live client use) · **Google Sheets** as CRM with Apps Script ·
 JavaScript in Code nodes · webhooks, REST, JSON
 
-**On Google Sheets as the database:** deliberate. One installer, a few hundred
-leads a month, and an owner who wants to open it on his phone between site
-visits. At higher volume I'd move to Postgres or Airtable — every workflow reads
-through a single node, so the data layer swaps out in one place.
+**On Google Sheets as the database:** a deliberate fit for the target customer —
+a small installer doing a few hundred leads a month, whose owner wants to open the
+CRM on his phone between site visits. At higher volume I'd move to Postgres or
+Airtable; every workflow reads through a single node, so the data layer swaps out
+in one place.
 
 ## Running these locally
 
@@ -154,15 +155,19 @@ outside the workflow export.
 
 ## About
 
-**Prateek Mishra** — I build production AI automation systems.
+**Prateek Mishra** — I build AI automation systems.
 
 I came to this without a software-engineering background. I write JavaScript
 inside n8n Code nodes and Google Apps Script, and I work with REST APIs,
 webhooks and JSON every day debugging my own flows. What I'm good at is taking a
 real business problem end to end — talking to the customer, designing the
-system, building it, and supporting it once it's live. SolarLeadOS is the proof:
-I built it, sold it, onboarded the clients, and still run it.
+system, and building it. SolarLeadOS is a product I designed and built solo over
+about six months — market research, architecture, the workflows, the CRM, the sales
+materials. I'm running outreach and live demos to installers in Punjab and haven't
+closed a paying client yet. What I have is a system that works, and a clear picture
+of what that market needs.
 
 Open to AI automation roles. Immediate joiner.
 
+📧 thisisprateek22@gmail.com
 📧 thisisprateek22@gmail.com
