@@ -1,6 +1,6 @@
 # About this folder
 
-SolarLeadOS runs as **8 connected n8n workflows** in production.
+SolarLeadOS is **8 connected n8n workflows**, running live end to end.
 
 **3 are published here.** They were chosen because together they cover every
 technique used across the full system — webhook and scheduled triggers, LLM
@@ -8,7 +8,7 @@ integration, defensive parsing, multi-way routing, retry policy, and idempotent
 state tracking.
 
 The remaining 5 are the sequencing engine — the drip timing, message angles, and
-follow-up copy that the product is actually sold on. Those stay private. This is a
+follow-up copy the product is built around. Those stay private. This is a
 portfolio, not a handover.
 
 | Published | Why it's here |
@@ -19,7 +19,7 @@ portfolio, not a handover.
 
 **Not published:** 02 Daily Drip Sequencer · 05 Post-Proposal Drip ·
 06 Site-Visit Reminders · 07 Dormant Reactivation · 08 Referral & Review Engine.
-All 8 are shown running in the [demo video]((https://www.loom.com/share/ab6c6cec7921441d80eaf72ec10bfdb9)) and I'm happy to walk through any
+All 8 are shown running in the [demo video](#) and I'm happy to walk through any
 of them live.
 
 ---
