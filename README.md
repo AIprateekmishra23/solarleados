@@ -162,7 +162,7 @@ inside n8n Code nodes and Google Apps Script, and I work with REST APIs,
 webhooks and JSON every day debugging my own flows. What I'm good at is taking a
 real business problem end to end — talking to the customer, designing the
 system, and building it. SolarLeadOS is a product I designed and built solo over
-about six months — market research, architecture, the workflows, the CRM, the sales
+about eight months — market research, architecture, the workflows, the CRM, the sales
 materials. I'm running outreach and live demos to installers in Punjab and haven't
 closed a paying client yet. What I have is a system that works, and a clear picture
 of what that market needs.
