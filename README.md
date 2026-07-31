@@ -161,13 +161,12 @@ I came to this without a software-engineering background. I write JavaScript
 inside n8n Code nodes and Google Apps Script, and I work with REST APIs,
 webhooks and JSON every day debugging my own flows. What I'm good at is taking a
 real business problem end to end — talking to the customer, designing the
-system, and building it. SolarLeadOS is a product I designed and built solo over
-about eight months — market research, architecture, the workflows, the CRM, the sales
-materials. I'm running outreach and live demos to installers in Punjab and haven't
+system, and building it. I've been building automations for about a year — Make.com
+from July 2025, then n8n. SolarLeadOS is the product I designed and built solo —
+market research, architecture, the workflows, the CRM, the sales materials. I'm running outreach and live demos to installers in Punjab and haven't
 closed a paying client yet. What I have is a system that works, and a clear picture
 of what that market needs.
 
 Open to AI automation roles. Immediate joiner.
 
-📧 thisisprateek22@gmail.com
 📧 thisisprateek22@gmail.com
