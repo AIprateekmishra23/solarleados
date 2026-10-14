@@ -19,8 +19,7 @@ keep this repo focused.
 
 **Not published:** 02 Daily Drip Sequencer · 05 Post-Proposal Drip ·
 06 Site-Visit Reminders · 07 Dormant Reactivation · 08 Referral & Review Engine.
-All 8 are shown running in the [demo video](https://www.loom.com/share/ab6c6cec7921441d80eaf72ec10bfdb9) and I'm happy to walk through any
-of them live.
+I'm happy to walk through any of them live.
 
 ---
 
