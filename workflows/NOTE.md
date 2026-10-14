@@ -7,9 +7,9 @@ technique used across the full system — webhook and scheduled triggers, LLM
 integration, defensive parsing, multi-way routing, retry policy, and idempotent
 state tracking.
 
-The remaining 5 are the sequencing engine — the drip timing, message angles, and
-follow-up copy the product is built around. Those stay private. This is a
-portfolio, not a handover.
+The remaining 5 are the sequencing workflows — drip timing, message angles, and
+follow-up copy. They reuse the same patterns, so they are not published here to
+keep this repo focused.
 
 | Published | Why it's here |
 |---|---|
@@ -19,7 +19,7 @@ portfolio, not a handover.
 
 **Not published:** 02 Daily Drip Sequencer · 05 Post-Proposal Drip ·
 06 Site-Visit Reminders · 07 Dormant Reactivation · 08 Referral & Review Engine.
-All 8 are shown running in the [demo video](#) and I'm happy to walk through any
+All 8 are shown running in the [demo video](https://www.loom.com/share/ab6c6cec7921441d80eaf72ec10bfdb9) and I'm happy to walk through any
 of them live.
 
 ---
