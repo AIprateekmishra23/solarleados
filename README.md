@@ -4,8 +4,6 @@ An AI lead-management system for rooftop-solar installers in North India.
 Eight connected n8n workflows, one Google Sheets CRM, WhatsApp as the only
 customer channel. Built solo, running live end to end.
 
-**▶ [5-minute demo — the system running live](https://www.loom.com/share/ab6c6cec7921441d80eaf72ec10bfdb9)**
-
 ---
 
 ## The problem
