@@ -66,11 +66,9 @@ state handling that repeats everywhere else.
 | [`04-reply-detection-intent-routing`](workflows/04-reply-detection-intent-routing.json) | Inbound webhook · payload validation · Gemini intent classification · 4-way routing · dual-audience sends |
 
 **Not published:** the drip sequencer and the four lifecycle workflows
-(post-proposal, site visits, dormant reactivation, referrals). Those hold the
-sequencing logic and message copy the product is built around. All eight are shown
-running in the demo video and I'm happy to walk through any of them on a call.
-
-This is a portfolio, not a handover.
+(post-proposal, site visits, dormant reactivation, referrals). They reuse the
+same patterns shown here. All eight are shown running in the demo video and I'm
+happy to walk through any of them on a call.
 
 ---
 
@@ -131,10 +129,10 @@ Every node that touches an external service is configured for failure:
 
 **n8n** (self-hosted) · **Google Gemini** `gemini-2.5-flash` for scoring and
 intent classification · **WhatsApp** via self-hosted WAHA in Docker (demo) and
-UltraMsg (the cloud option for live client use) · **Google Sheets** as CRM with Apps Script ·
+UltraMsg (cloud alternative) · **Google Sheets** as CRM with Apps Script ·
 JavaScript in Code nodes · webhooks, REST, JSON
 
-**On Google Sheets as the database:** a deliberate fit for the target customer —
+**On Google Sheets as the database:** a deliberate fit for the use case —
 a small installer doing a few hundred leads a month, whose owner wants to open the
 CRM on his phone between site visits. At higher volume I'd move to Postgres or
 Airtable; every workflow reads through a single node, so the data layer swaps out
@@ -160,12 +158,10 @@ outside the workflow export.
 I came to this without a software-engineering background. I write JavaScript
 inside n8n Code nodes and Google Apps Script, and I work with REST APIs,
 webhooks and JSON every day debugging my own flows. What I'm good at is taking a
-real business problem end to end — talking to the customer, designing the
+real-world problem end to end — understanding the workflow, designing the
 system, and building it. I've been building automations for about a year — Make.com
-from July 2025, then n8n. SolarLeadOS is the product I designed and built solo —
-market research, architecture, the workflows, the CRM, the sales materials. I'm running outreach and live demos to installers in Punjab and haven't
-closed a paying client yet. What I have is a system that works, and a clear picture
-of what that market needs.
+from July 2025, then n8n. SolarLeadOS is an independent project I designed and
+built solo — architecture, the workflows, the CRM, and the AI logic.
 
 Open to AI automation roles. Immediate joiner.
 
